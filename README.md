@@ -224,7 +224,7 @@ fertige Pakete für 3.15 an.
 - [x] Projektgrundlage und Health-Endpoint
 - [x] Datenbank mit PostgreSQL per Docker Compose
 - [x] CRUD für Projekte mit Datumsvalidierung
-- [ ] CRUD für Meilensteine und Abfrage überfälliger Meilensteine
+- [x] CRUD für Meilensteine und Abfrage überfälliger Meilensteine
 - [ ] Authentifizierung per API-Key
 - [ ] Strukturiertes Logging
 - [ ] Dockerfile und Start mit `docker compose up`
