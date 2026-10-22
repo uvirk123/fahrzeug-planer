@@ -1,18 +1,15 @@
 
 
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import DbSession
 from app.models import Project
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_project_or_404(project_id: int, db: Session) -> Project:
