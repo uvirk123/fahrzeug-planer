@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["API_KEY"] = "test-key"
 
 from app.database import Base, get_db
 from app.main import app
@@ -33,6 +34,6 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
+    yield TestClient(app, headers={"X-API-Key": "test-key"})
     app.dependency_overrides.clear()
     Base.metadata.drop_all(engine)
