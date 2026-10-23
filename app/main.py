@@ -2,9 +2,10 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app import models  # noqa: F401
+from app.auth import require_api_key
 from app.database import Base, engine
 from app.routes import health, milestones, projects
 
@@ -21,6 +22,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+protected = [Depends(require_api_key)]
+
 app.include_router(health.router)
-app.include_router(projects.router)
-app.include_router(milestones.router)
+app.include_router(projects.router, dependencies=protected)
+app.include_router(milestones.router, dependencies=protected)
