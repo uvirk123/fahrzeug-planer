@@ -226,6 +226,6 @@ fertige Pakete für 3.15 an.
 - [x] CRUD für Projekte mit Datumsvalidierung
 - [x] CRUD für Meilensteine und Abfrage überfälliger Meilensteine
 - [x] Authentifizierung per API-Key
-- [ ] Strukturiertes Logging
+- [x] Strukturiertes Logging
 - [ ] Dockerfile und Start mit `docker compose up`
 - [ ] CI/CD-Pipeline mit Security-Scans
