@@ -133,7 +133,7 @@ Die API läuft dann unter http://localhost:8000.
 
     python3.13 -m venv .venv
     source .venv/bin/activate
-    pip install -r requirements.txt
+    pip install -r requirements-dev.txt
 
     docker compose up -d db
     uvicorn app.main:app --reload
@@ -227,5 +227,5 @@ fertige Pakete für 3.15 an.
 - [x] CRUD für Meilensteine und Abfrage überfälliger Meilensteine
 - [x] Authentifizierung per API-Key
 - [x] Strukturiertes Logging
-- [ ] Dockerfile und Start mit `docker compose up`
+- [x] Dockerfile und Start mit `docker compose up`
 - [ ] CI/CD-Pipeline mit Security-Scans
