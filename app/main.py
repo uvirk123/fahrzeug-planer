@@ -5,6 +5,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import RedirectResponse
 
 from app import models  # noqa: F401
 from app.auth import require_api_key
@@ -49,6 +50,9 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 protected = [Depends(require_api_key)]
 
