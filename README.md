@@ -139,6 +139,7 @@ Einen sicheren Wert kann man so erzeugen:
 | `DATABASE_URL` | Verbindungsadresse der Datenbank für die App |
 | `API_KEY` | Schlüssel für den Zugriff auf die API |
 | `LOG_LEVEL` | optional, Standard ist `INFO` |
+| `ENABLE_DOCS` | optional, Swagger-Doku an (`true`) oder aus (`false`), Standard ist `true` |
 
 ### Starten mit Docker
 
@@ -258,6 +259,7 @@ die folgenden Schritte werden nicht mehr ausgeführt.
 | Nur Fehlversuche werden gezählt | berechtigte Nutzer werden nie gesperrt |
 | Eigene Umsetzung statt Zusatzpaket | jedes neue Paket ist eine mögliche Schwachstelle mehr |
 | Zähler im Arbeitsspeicher | reicht für eine Instanz, bei mehreren Instanzen bräuchte man einen gemeinsamen Speicher wie Redis |
+| Swagger-Doku abschaltbar | in Produktion soll nicht jeder sehen, welche Endpunkte und Felder es gibt |
 
 ### Docker
 
