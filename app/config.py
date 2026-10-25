@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     max_failed_logins: int = 5
     failed_login_window_seconds: int = 60
+    enable_docs: bool = True
 
 
 settings = Settings()

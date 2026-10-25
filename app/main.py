@@ -17,6 +17,11 @@ from app.routes import health, milestones, projects
 setup_logging(settings.log_level)
 logger = logging.getLogger(__name__)
 
+def docs_settings(enabled: bool) -> dict[str, str | None]:
+    if enabled:
+        return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,6 +35,7 @@ app = FastAPI(
     description="REST-API zur Planung von Fahrzeugprojekten und Meilensteinen",
     version="0.1.0",
     lifespan=lifespan,
+    **docs_settings(settings.enable_docs),
 )
 
 
@@ -50,9 +56,11 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/docs")
+if settings.enable_docs:
+
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse(url="/docs")
 
 protected = [Depends(require_api_key)]
 
