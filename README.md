@@ -2,34 +2,39 @@
 
 # Fahrzeug-Planer API
 
-REST-API zur Planung von Fahrzeugprojekten und Meilensteinen.
+![CI](https://github.com/uvirk123/fahrzeug-planer/actions/workflows/ci.yml/badge.svg)
 
-Der Schwerpunkt liegt auf einer CI/CD-Pipeline mit integrierten Security-Checks:
-Bei jedem Push wird der Code gelintet, getestet, als Docker-Image gebaut und auf
-Schwachstellen, unsichere Abhängigkeiten und versehentlich eingecheckte Secrets
-geprüft.
+Eine REST-API, mit der man Fahrzeugprojekte und ihre Meilensteine planen kann.
+
+Der Schwerpunkt des Projekts liegt auf der CI/CD-Pipeline. Bei jedem Push wird der
+Code automatisch geprüft, getestet, als Docker-Image gebaut und auf
+Sicherheitsprobleme untersucht.
 
 ## Funktionale Anforderungen
 
+Was die API kann:
+
 - Projekte und Meilensteine anlegen, anzeigen, ändern und löschen
-- Meilensteine mit Status (`planned`, `in_progress`, `done`) und Fälligkeitsdatum
-- Abfrage überfälliger Meilensteine
-- Authentifizierung per API-Key
-- Eingabevalidierung, z. B. kein Enddatum vor dem Startdatum
-- Health-Endpoint und automatisch generierte API-Doku (OpenAPI/Swagger)
-- Strukturiertes Logging im JSON-Format
+- Meilensteine haben einen Status (`planned`, `in_progress`, `done`) und ein Fälligkeitsdatum
+- Abfrage, welche Meilensteine überfällig sind
+- Zugriff nur mit API-Key
+- Prüfung der Eingaben, z. B. darf das Enddatum nicht vor dem Startdatum liegen
+- Health-Endpoint und automatisch erzeugte API-Doku (Swagger)
+- Logging im JSON-Format
 
 ## Nicht-funktionale Anforderungen
 
+Welche Qualitätsziele das Projekt erfüllt und wie:
+
 | Anforderung | Umsetzung |
 |---|---|
-| Testabdeckung mindestens 70 % | pytest-cov, wird in der Pipeline geprüft |
+| Testabdeckung mindestens 70 % | wird bei jedem Push in der Pipeline geprüft |
 | Container läuft nicht als root | eigener Benutzer im Dockerfile |
 | Schlankes Base-Image | `python:3.13-slim` |
-| Keine Passwörter oder Keys im Repository | `.env` über `.gitignore` ausgeschlossen, Gitleaks in der Pipeline |
+| Keine Passwörter oder Keys im Repository | `.env` steht in `.gitignore`, Gitleaks prüft die Git-Historie |
 | Start mit einem Befehl | `docker compose up` |
 | Strukturiertes Logging | Logs im JSON-Format |
-| Dokumentation | README mit Architekturdiagramm, Setup und Design-Entscheidungen, Swagger-Doku |
+| Dokumentation | diese README und die Swagger-Doku |
 
 ## Tech-Stack
 
@@ -38,11 +43,12 @@ geprüft.
 | Sprache | Python 3.13 |
 | Framework | FastAPI |
 | Datenbank | PostgreSQL 17 |
-| ORM / Validierung | SQLAlchemy, Pydantic |
+| Datenbankzugriff und Validierung | SQLAlchemy, Pydantic |
 | Tests | pytest, pytest-cov |
 | Container | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
-| Security-Scans | Ruff, Bandit, Trivy, Gitleaks |
+| Code-Qualität | Ruff |
+| Security-Scans | Bandit, Trivy, Gitleaks |
 
 ## Architektur
 
@@ -56,6 +62,10 @@ flowchart LR
         db
     end
 ```
+
+Ein Client schickt Anfragen mit API-Key an die App. Die App speichert die Daten in
+PostgreSQL. Beide laufen als eigene Container und werden zusammen über
+Docker Compose gestartet.
 
 ### Datenmodell
 
@@ -78,14 +88,15 @@ erDiagram
     }
 ```
 
-Ein Projekt hat beliebig viele Meilensteine. Wird ein Projekt gelöscht, werden
-seine Meilensteine mitgelöscht.
+Ein Projekt kann beliebig viele Meilensteine haben. Jeder Meilenstein gehört zu
+genau einem Projekt. Wird ein Projekt gelöscht, werden seine Meilensteine
+automatisch mitgelöscht.
 
 ## API-Endpunkte
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| GET | `/health` | Status der Anwendung (ohne Authentifizierung) |
+| GET | `/health` | Prüft, ob die App läuft (ohne API-Key) |
 | POST | `/projects` | Projekt anlegen |
 | GET | `/projects` | Alle Projekte anzeigen |
 | GET | `/projects/{id}` | Ein Projekt anzeigen |
@@ -93,14 +104,16 @@ seine Meilensteine mitgelöscht.
 | DELETE | `/projects/{id}` | Projekt löschen |
 | POST | `/projects/{id}/milestones` | Meilenstein zu einem Projekt anlegen |
 | GET | `/projects/{id}/milestones` | Meilensteine eines Projekts anzeigen |
-| GET | `/milestones/{id}` | Einen Meilenstein anzeigen |
-| PATCH | `/milestones/{id}` | Meilenstein ändern, z. B. Status |
-| DELETE | `/milestones/{id}` | Meilenstein löschen |
 | GET | `/milestones/overdue` | Überfällige Meilensteine anzeigen |
+| GET | `/milestones/{id}` | Einen Meilenstein anzeigen |
+| PATCH | `/milestones/{id}` | Meilenstein ändern, z. B. den Status |
+| DELETE | `/milestones/{id}` | Meilenstein löschen |
 
-Alle Endpunkte außer `/health` erwarten den Header `X-API-Key`.
+Alle Endpunkte außer `/health` brauchen den Header `X-API-Key`.
 
-Die vollständige Doku ist nach dem Start unter http://localhost:8000/docs erreichbar.
+Nach dem Start ist die vollständige Doku unter http://localhost:8000/docs erreichbar.
+Dort kann man über „Authorize“ den API-Key eingeben und alle Endpunkte direkt
+ausprobieren.
 
 ## Setup
 
@@ -114,20 +127,42 @@ Die vollständige Doku ist nach dem Start unter http://localhost:8000/docs errei
     cp .env.example .env
 
 Danach in `.env` ein eigenes Datenbank-Passwort und einen API-Key eintragen.
+Einen sicheren Wert kann man so erzeugen:
+
+    python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 
 | Variable | Bedeutung |
 |---|---|
-| `POSTGRES_USER` | Datenbank-Benutzer |
-| `POSTGRES_PASSWORD` | Datenbank-Passwort |
+| `POSTGRES_USER` | Benutzername für die Datenbank |
+| `POSTGRES_PASSWORD` | Passwort für die Datenbank |
 | `POSTGRES_DB` | Name der Datenbank |
-| `DATABASE_URL` | Verbindungs-URL für die App |
+| `DATABASE_URL` | Verbindungsadresse der Datenbank für die App |
 | `API_KEY` | Schlüssel für den Zugriff auf die API |
+| `LOG_LEVEL` | optional, Standard ist `INFO` |
 
 ### Starten mit Docker
 
-    docker compose up
+1. App und Datenbank starten:
 
-Die API läuft dann unter http://localhost:8000.
+       docker compose up -d
+
+2. Prüfen, ob beide Container laufen. Nach etwa 30 Sekunden sollte bei beiden
+   `healthy` stehen:
+
+       docker compose ps
+
+3. Im Browser die API-Doku öffnen: http://localhost:8000/docs
+
+4. Oben rechts auf **Authorize** klicken und den `API_KEY` aus der `.env`
+   eintragen. Danach lassen sich alle Endpunkte direkt ausprobieren.
+
+5. Zum Beenden:
+
+       docker compose down
+
+   Die Daten bleiben dabei erhalten. Mit `docker compose down -v` wird auch die
+   Datenbank gelöscht.
+
 
 ### Lokale Entwicklung
 
@@ -138,12 +173,20 @@ Die API läuft dann unter http://localhost:8000.
     docker compose up -d db
     uvicorn app.main:app --reload
 
-## Tests
+Wichtig: PostgreSQL speichert das Passwort beim allerersten Start. Wenn man das
+Passwort in `.env` später ändert, muss die Datenbank einmal neu angelegt werden.
+Dabei werden alle gespeicherten Daten gelöscht:
+
+    docker compose down -v
+
+## Tests und Prüfungen lokal ausführen
 
     pytest --cov=app
+    ruff check .
+    bandit -r app --severity-level high
 
-Die Tests laufen gegen eine SQLite-Datenbank im Arbeitsspeicher und brauchen
-keinen laufenden Datenbank-Container. Die Mindestabdeckung liegt bei 70 %.
+Die Tests nutzen eine SQLite-Datenbank im Arbeitsspeicher. Dafür muss kein
+Datenbank-Container laufen.
 
 ## CI/CD-Pipeline
 
@@ -157,75 +200,77 @@ flowchart LR
     trivy --> secrets[Secret-Scan<br/>Gitleaks]
 ```
 
-| Schritt | Werkzeug | Bricht ab bei |
-|---|---|---|
-| Linting | Ruff | Stilfehlern und typischen Programmierfehlern |
-| Unit-Tests | pytest | fehlgeschlagenen Tests oder Abdeckung unter 70 % |
-| Image bauen | Docker | Fehlern im Dockerfile |
-| Code-Scan | Bandit | unsicheren Code-Mustern mit hohem Schweregrad |
-| Abhängigkeits- und Container-Scan | Trivy | Schwachstellen mit Schweregrad CRITICAL |
-| Secret-Scan | Gitleaks | gefundenen Passwörtern, Keys oder Tokens |
+Die Pipeline läuft bei jedem Push. Schlägt ein Schritt fehl, bricht sie ab und
+die folgenden Schritte werden nicht mehr ausgeführt.
 
-## Sicherheitsmaßnahmen
-
-- Keine Zugangsdaten im Repository, alles läuft über Umgebungsvariablen
-- Container läuft als eigener Benutzer, nicht als root
-- Schlankes Base-Image (`python:3.13-slim`) für eine kleinere Angriffsfläche
-- Eingaben werden vor der Verarbeitung validiert
-- Automatische Security-Scans bei jedem Push
+| Schritt | Werkzeug | Was geprüft wird | Bricht ab bei |
+|---|---|---|---|
+| Linting | Ruff | Code-Stil und typische Programmierfehler | jedem Fund |
+| Unit-Tests | pytest | ob die App richtig funktioniert | fehlgeschlagenen Tests oder Abdeckung unter 70 % |
+| Image bauen | Docker | ob sich das Image bauen lässt | Fehlern im Dockerfile |
+| Code-Scan | Bandit | unsichere Stellen im eigenen Python-Code | Funden mit hohem Schweregrad |
+| Abhängigkeits-Scan | Trivy | bekannte Sicherheitslücken in den Python-Paketen | Lücken mit Schweregrad CRITICAL |
+| Container-Scan | Trivy | bekannte Sicherheitslücken im fertigen Docker-Image | Lücken mit Schweregrad CRITICAL |
+| Secret-Scan | Gitleaks | Passwörter und Keys in der gesamten Git-Historie | jedem Fund |
 
 ## Projektstruktur
 
     app/
-      main.py           Startpunkt der Anwendung
-      config.py         Einstellungen aus Umgebungsvariablen
-      database.py       Datenbankverbindung
-      auth.py           Prüfung des API-Keys
-      models/           Datenbanktabellen
-      schemas/          Ein- und Ausgabeformate inkl. Validierung
-      routes/           API-Endpunkte
-    tests/              Tests
-    .github/workflows/  CI/CD-Pipeline
-    Dockerfile
-    docker-compose.yml
+      main.py               Startpunkt der App, Logging jeder Anfrage
+      config.py             Einstellungen aus Umgebungsvariablen
+      database.py           Verbindung zur Datenbank
+      auth.py               Prüfung des API-Keys
+      logging_config.py     Logging im JSON-Format
+      models/               Datenbanktabellen
+      schemas/              Ein- und Ausgabeformate mit Validierung
+      routes/               API-Endpunkte
+    tests/                  Tests
+    .github/workflows/      CI/CD-Pipeline
+    Dockerfile              Bauplan für den App-Container
+    docker-compose.yml      startet App und Datenbank zusammen
+    requirements.txt        Pakete für den Betrieb
+    requirements-dev.txt    zusätzliche Pakete für Entwicklung und Tests
 
 ## Design-Entscheidungen
 
-**FastAPI statt Spring Boot.** Für eine kleine API ist FastAPI schneller aufgesetzt
-und erzeugt die OpenAPI-Doku automatisch aus dem Code.
+### Anwendung
 
-**PostgreSQL in der Anwendung, SQLite in den Tests.** PostgreSQL ist näher an einer
-echten Produktionsumgebung. Die Tests nutzen SQLite im Arbeitsspeicher, damit sie
-schnell sind und auch in der Pipeline ohne Datenbank-Container laufen.
+| Entscheidung | Warum |
+|---|---|
+| FastAPI statt Spring Boot | schneller eingerichtet, erzeugt die API-Doku automatisch |
+| PostgreSQL in der App, SQLite in den Tests | PostgreSQL ist nah an echter Produktion, SQLite macht die Tests schnell und unabhängig |
+| API-Key statt JWT | keine Benutzerkonten nötig, JWT lohnt sich erst bei mehreren Benutzern mit Rechten |
+| Datumsprüfung auch beim Ändern | wird nur ein Datum geschickt, muss es mit dem gespeicherten Wert verglichen werden |
+| Meilensteine nur innerhalb der Projektlaufzeit | ein Meilenstein nach Projektende ergibt fachlich keinen Sinn |
+| „Überfällig“ = Datum vorbei und Status nicht `done` | erledigte Meilensteine sollen nicht als Problem auftauchen |
+| `create_all` statt Migrationen | reicht für dieses Projekt, in größeren Projekten würde ich Alembic nutzen |
+| Python 3.13 statt 3.15 | für 3.15 gab es noch nicht alle Pakete |
 
-**API-Key statt JWT.** Die API hat keine Benutzerverwaltung, deshalb reicht ein
-API-Key. JWT wäre sinnvoll, sobald es mehrere Benutzer mit unterschiedlichen
-Rechten gibt.
+### Sicherheit
 
-**Validierung beim Ändern.** Wird bei einem PATCH nur das Enddatum geschickt,
-prüft die API es gegen das gespeicherte Startdatum. Das Schema allein kann das
-nicht, weil es den gespeicherten Wert nicht kennt.
+| Entscheidung | Warum |
+|---|---|
+| API-Key-Vergleich mit `secrets.compare_digest` | verhindert, dass man über die Antwortzeit den Schlüssel erraten kann |
+| API-Key im Header statt in der URL | URLs landen in Logs und im Browserverlauf |
+| Keine Header in den Logs | der API-Key darf nie in Logs landen |
+| Logs als JSON | Log-Systeme wie Elasticsearch können die Felder direkt auswerten |
 
-**Überfällig** heißt: Das Fälligkeitsdatum liegt in der Vergangenheit und der
-Status ist nicht `done`.
+### Docker
 
-**Tabellen über `create_all` statt Migrationen.** Für den Umfang des Projekts reicht
-das. In einem echten Projekt würde ich Migrationen mit Alembic einsetzen, damit
-sich das Datenbankschema nachvollziehbar ändern lässt.
+| Entscheidung | Warum |
+|---|---|
+| Getrennte Paketlisten für Betrieb und Entwicklung | kleineres Image (392 MB → 332 MB) und weniger Pakete mit möglichen Lücken |
+| Container läuft als `appuser` statt `root` | bei einer Lücke hat ein Angreifer nur eingeschränkte Rechte |
+| Code im Container nur lesbar | der Code kann im laufenden Container nicht verändert werden |
+| Datenbank-Port nur auf `127.0.0.1` | andere Geräte im Netzwerk erreichen die Datenbank nicht |
 
-**Reihenfolge der Pipeline.** Schnelle Prüfungen wie Linting und Tests laufen zuerst.
-Schlägt eine davon fehl, bricht die Pipeline früh ab und spart Zeit.
+### Pipeline
 
-**Python 3.13 statt 3.15.** Zum Projektstart boten noch nicht alle Abhängigkeiten
-fertige Pakete für 3.15 an.
-
-## Stand
-
-- [x] Projektgrundlage und Health-Endpoint
-- [x] Datenbank mit PostgreSQL per Docker Compose
-- [x] CRUD für Projekte mit Datumsvalidierung
-- [x] CRUD für Meilensteine und Abfrage überfälliger Meilensteine
-- [x] Authentifizierung per API-Key
-- [x] Strukturiertes Logging
-- [x] Dockerfile und Start mit `docker compose up`
-- [ ] CI/CD-Pipeline mit Security-Scans
+| Entscheidung | Warum |
+|---|---|
+| Schnelle Prüfungen zuerst | bei einem Fehler bricht die Pipeline früh ab und spart Zeit |
+| Trivy bricht nur bei CRITICAL ab | die Pipeline wird nur bei ernsten Problemen rot |
+| Lücken ohne Patch werden ignoriert | man könnte sie ohnehin nicht beheben |
+| Gitleaks scannt die gesamte Git-Historie | auch gelöschte Passwörter stecken noch in alten Commits |
+| Pipeline darf das Repo nur lesen | eine manipulierte Action könnte nichts verändern |
+| Feste Versionen für Actions | in echten Projekten zusätzlich Commit-Hashes, da Versionsnummern nachträglich geändert werden können |
