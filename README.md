@@ -254,6 +254,10 @@ die folgenden Schritte werden nicht mehr ausgeführt.
 | API-Key im Header statt in der URL | URLs landen in Logs und im Browserverlauf |
 | Keine Header in den Logs | der API-Key darf nie in Logs landen |
 | Logs als JSON | Log-Systeme wie Elasticsearch können die Felder direkt auswerten |
+| Sperre nach 5 falschen API-Keys pro Minute | macht Brute-Force-Angriffe praktisch unmöglich |
+| Nur Fehlversuche werden gezählt | berechtigte Nutzer werden nie gesperrt |
+| Eigene Umsetzung statt Zusatzpaket | jedes neue Paket ist eine mögliche Schwachstelle mehr |
+| Zähler im Arbeitsspeicher | reicht für eine Instanz, bei mehreren Instanzen bräuchte man einen gemeinsamen Speicher wie Redis |
 
 ### Docker
 

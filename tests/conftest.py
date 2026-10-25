@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from app.auth import failed_logins
 
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["API_KEY"] = "test-key"
@@ -24,6 +25,7 @@ TestingSession = sessionmaker(bind=engine, autoflush=False)
 
 @pytest.fixture
 def client():
+    failed_logins.reset()
     Base.metadata.create_all(engine)
 
     def override_get_db():
