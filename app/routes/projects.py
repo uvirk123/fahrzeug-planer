@@ -50,6 +50,16 @@ def update_project(project_id: int, data: ProjectUpdate, db: DbSession):
             detail="end_date must not be before start_date",
         )
 
+    outside = [
+        m for m in project.milestones
+        if not project.start_date <= m.due_date <= project.end_date
+    ]
+    if outside:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="existing milestones would fall outside the project timeframe",
+        )
+
     db.commit()
     db.refresh(project)
     return project

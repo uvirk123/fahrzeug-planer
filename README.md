@@ -1,5 +1,3 @@
-
-
 # Fahrzeug-Planer API
 
 ![CI](https://github.com/uvirk123/fahrzeug-planer/actions/workflows/ci.yml/badge.svg)
@@ -18,9 +16,11 @@ Was die API kann:
 - Meilensteine haben einen Status (`planned`, `in_progress`, `done`) und ein Fälligkeitsdatum
 - Abfrage, welche Meilensteine überfällig sind
 - Zugriff nur mit API-Key
-- Prüfung der Eingaben, z. B. darf das Enddatum nicht vor dem Startdatum liegen
+- Prüfung der Eingaben, z. B. darf das Enddatum nicht vor dem Startdatum liegen und
+  Meilensteine müssen innerhalb der Projektlaufzeit liegen
 - Health-Endpoint und automatisch erzeugte API-Doku (Swagger)
 - Logging im JSON-Format
+- Schutz vor Brute-Force: nach 5 falschen API-Keys pro Minute wird die IP-Adresse kurz gesperrt
 
 ## Nicht-funktionale Anforderungen
 
@@ -111,6 +111,10 @@ automatisch mitgelöscht.
 
 Alle Endpunkte außer `/health` brauchen den Header `X-API-Key`.
 
+Fehlt der Schlüssel oder ist er falsch, antwortet die API mit `401`. Nach 5
+Fehlversuchen innerhalb einer Minute antwortet sie für diese IP-Adresse mit `429`,
+auch wenn danach der richtige Schlüssel kommt.
+
 Nach dem Start ist die vollständige Doku unter http://localhost:8000/docs erreichbar.
 Dort kann man über „Authorize“ den API-Key eingeben und alle Endpunkte direkt
 ausprobieren.
@@ -140,6 +144,8 @@ Einen sicheren Wert kann man so erzeugen:
 | `API_KEY` | Schlüssel für den Zugriff auf die API |
 | `LOG_LEVEL` | optional, Standard ist `INFO` |
 | `ENABLE_DOCS` | optional, Swagger-Doku an (`true`) oder aus (`false`), Standard ist `true` |
+| `MAX_FAILED_LOGINS` | optional, erlaubte Fehlversuche, Standard ist `5` |
+| `FAILED_LOGIN_WINDOW_SECONDS` | optional, Zeitraum in Sekunden, in dem Fehlversuche gezählt werden. Eine Sperre endet spätestens nach dieser Zeit. Standard ist `60` |
 
 ### Starten mit Docker
 
@@ -153,6 +159,8 @@ Einen sicheren Wert kann man so erzeugen:
        docker compose ps
 
 3. Im Browser die API-Doku öffnen: http://localhost:8000/docs
+   (http://localhost:8000 leitet automatisch dorthin weiter). Die Doku ist nur
+   erreichbar, wenn `ENABLE_DOCS` nicht auf `false` steht.
 
 4. Oben rechts auf **Authorize** klicken und den `API_KEY` aus der `.env`
    eintragen. Danach lassen sich alle Endpunkte direkt ausprobieren.
@@ -163,7 +171,6 @@ Einen sicheren Wert kann man so erzeugen:
 
    Die Daten bleiben dabei erhalten. Mit `docker compose down -v` wird auch die
    Datenbank gelöscht.
-
 
 ### Lokale Entwicklung
 
@@ -221,6 +228,7 @@ die folgenden Schritte werden nicht mehr ausgeführt.
       config.py             Einstellungen aus Umgebungsvariablen
       database.py           Verbindung zur Datenbank
       auth.py               Prüfung des API-Keys
+      rate_limit.py         Sperre nach zu vielen Fehlversuchen
       logging_config.py     Logging im JSON-Format
       models/               Datenbanktabellen
       schemas/              Ein- und Ausgabeformate mit Validierung
@@ -243,6 +251,7 @@ die folgenden Schritte werden nicht mehr ausgeführt.
 | API-Key statt JWT | keine Benutzerkonten nötig, JWT lohnt sich erst bei mehreren Benutzern mit Rechten |
 | Datumsprüfung auch beim Ändern | wird nur ein Datum geschickt, muss es mit dem gespeicherten Wert verglichen werden |
 | Meilensteine nur innerhalb der Projektlaufzeit | ein Meilenstein nach Projektende ergibt fachlich keinen Sinn |
+| Projektlaufzeit kann vorhandene Meilensteine nicht ausschließen | wird ein Projekt verkürzt, darf kein bestehender Meilenstein außerhalb der neuen Laufzeit landen |
 | „Überfällig“ = Datum vorbei und Status nicht `done` | erledigte Meilensteine sollen nicht als Problem auftauchen |
 | `create_all` statt Migrationen | reicht für dieses Projekt, in größeren Projekten würde ich Alembic nutzen |
 | Python 3.13 statt 3.15 | für 3.15 gab es noch nicht alle Pakete |
@@ -255,11 +264,11 @@ die folgenden Schritte werden nicht mehr ausgeführt.
 | API-Key im Header statt in der URL | URLs landen in Logs und im Browserverlauf |
 | Keine Header in den Logs | der API-Key darf nie in Logs landen |
 | Logs als JSON | Log-Systeme wie Elasticsearch können die Felder direkt auswerten |
-| Sperre nach 5 falschen API-Keys pro Minute | macht Brute-Force-Angriffe praktisch unmöglich |
-| Nur Fehlversuche werden gezählt | berechtigte Nutzer werden nie gesperrt |
+| Sperre nach 5 falschen API-Keys pro Minute und IP | erschwert das automatische Durchprobieren von Schlüsseln stark. Angreifer mit sehr vielen IP-Adressen werden aber nur gebremst, nicht gestoppt |
+| Nur Fehlversuche werden gezählt | wer den richtigen Schlüssel nutzt, löst keine Sperre aus. Teilen sich mehrere Nutzer eine IP (z. B. im Uni-WLAN), kann ein Fehlversuch aber alle treffen |
 | Eigene Umsetzung statt Zusatzpaket | jedes neue Paket ist eine mögliche Schwachstelle mehr |
-| Zähler im Arbeitsspeicher | reicht für eine Instanz, bei mehreren Instanzen bräuchte man einen gemeinsamen Speicher wie Redis |
-| Swagger-Doku abschaltbar | in Produktion soll nicht jeder sehen, welche Endpunkte und Felder es gibt |
+| Zähler im Arbeitsspeicher | reicht für eine Instanz. Bei einem Neustart geht er verloren, bei mehreren Instanzen bräuchte man einen gemeinsamen Speicher wie Redis |
+| Swagger-Doku pro Umgebung abschaltbar | Fremde sollen in Produktion nicht sehen, welche Endpunkte es gibt. Bei diesem öffentlichen Repo bringt das wenig, bei internen APIs ist es eine sinnvolle zusätzliche Schutzschicht |
 
 ### Docker
 
@@ -280,3 +289,13 @@ die folgenden Schritte werden nicht mehr ausgeführt.
 | Gitleaks scannt die gesamte Git-Historie | auch gelöschte Passwörter stecken noch in alten Commits |
 | Pipeline darf das Repo nur lesen | eine manipulierte Action könnte nichts verändern |
 | Feste Versionen für Actions | in echten Projekten zusätzlich Commit-Hashes, da Versionsnummern nachträglich geändert werden können |
+
+## Ausblick
+
+Für einen echten Betrieb wären die nächsten Schritte:
+
+- Deployment des Images in eine Cloud-Umgebung als CD-Teil der Pipeline
+- HTTPS und mehrere API-Keys, z. B. einer pro Client
+- Secrets in einem Secret Manager statt in einer `.env`
+- Rate Limiting zusätzlich am API-Gateway oder Reverse Proxy
+- Monitoring auf Basis der JSON-Logs und des Health-Endpoints

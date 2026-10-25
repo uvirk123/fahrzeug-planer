@@ -53,6 +53,31 @@ def test_update_with_end_before_start_fails(client):
     assert response.status_code == 422
 
 
+def test_shortening_project_with_milestone_outside_fails(client):
+    project_id = client.post("/projects", json=PROJECT).json()["id"]
+    client.post(
+        f"/projects/{project_id}/milestones",
+        json={"title": "Crashtest", "due_date": "2027-06-01"},
+    )
+
+    response = client.patch(f"/projects/{project_id}", json={"end_date": "2027-01-01"})
+
+    assert response.status_code == 422
+
+
+def test_shortening_project_with_milestones_inside_is_allowed(client):
+    project_id = client.post("/projects", json=PROJECT).json()["id"]
+    client.post(
+        f"/projects/{project_id}/milestones",
+        json={"title": "Konzept", "due_date": "2026-03-01"},
+    )
+
+    response = client.patch(f"/projects/{project_id}", json={"end_date": "2027-01-01"})
+
+    assert response.status_code == 200
+    assert response.json()["end_date"] == "2027-01-01"
+
+
 def test_delete_project(client):
     project_id = client.post("/projects", json=PROJECT).json()["id"]
 
